@@ -41,10 +41,10 @@ setGlobals() {
       export CORE_PEER_ADDRESS=localhost:7051
     elif [ $USING_PEER -eq 1 ]; then
       export CORE_PEER_TLS_ROOTCERT_FILE=$PEER1_ORG1_CA
-      export CORE_PEER_ADDRESS=localhost:7053
+      export CORE_PEER_ADDRESS=localhost:7061
     elif [ $USING_PEER -eq 2 ]; then
       export CORE_PEER_TLS_ROOTCERT_FILE=$PEER2_ORG1_CA
-      export CORE_PEER_ADDRESS=localhost:7055
+      export CORE_PEER_ADDRESS=localhost:7071
     fi
   elif [ $USING_ORG -eq 2 ]; then
     export CORE_PEER_LOCALMSPID="Org2MSP"
@@ -54,10 +54,10 @@ setGlobals() {
       export CORE_PEER_ADDRESS=localhost:9051
     elif [ $USING_PEER -eq 1 ]; then
       export CORE_PEER_TLS_ROOTCERT_FILE=$PEER1_ORG2_CA
-      export CORE_PEER_ADDRESS=localhost:9053
+      export CORE_PEER_ADDRESS=localhost:9061
     elif [ $USING_PEER -eq 2 ]; then
       export CORE_PEER_TLS_ROOTCERT_FILE=$PEER2_ORG2_CA
-      export CORE_PEER_ADDRESS=localhost:9055
+      export CORE_PEER_ADDRESS=localhost:9071
     fi
   elif [ $USING_ORG -eq 3 ]; then
     export CORE_PEER_LOCALMSPID="Org3MSP"
@@ -67,10 +67,10 @@ setGlobals() {
       export CORE_PEER_ADDRESS=localhost:11051
     elif [ $USING_PEER -eq 1 ]; then
       export CORE_PEER_TLS_ROOTCERT_FILE=$PEER1_ORG3_CA
-      export CORE_PEER_ADDRESS=localhost:11053
+      export CORE_PEER_ADDRESS=localhost:11061
     elif [ $USING_PEER -eq 2 ]; then
       export CORE_PEER_TLS_ROOTCERT_FILE=$PEER2_ORG3_CA
-      export CORE_PEER_ADDRESS=localhost:11055
+      export CORE_PEER_ADDRESS=localhost:11071
     fi
   else
     errorln "ORG Unknown"
