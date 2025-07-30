@@ -280,6 +280,30 @@ func (s *SmartContract) AddProductToMerchant(ctx contractapi.TransactionContextI
 	return ctx.GetStub().PutState(merchant.ID, merchantJSON)
 }
 
+func (s *SmartContract) CreateUsers(ctx contractapi.TransactionContextInterface, users []User) error {
+	for _, user := range users {
+		exists, err := s.AssetExists(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return fmt.Errorf("the user %s already exists", user.ID)
+		}
+
+		user.Bills = []string{}
+		userJSON, err := json.Marshal(user)
+		if err != nil {
+			return err
+		}
+
+		err = ctx.GetStub().PutState(user.ID, userJSON)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CreateAsset issues a new asset to the world state with given details.
 func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string, appraisedValue int) error {
 	exists, err := s.AssetExists(ctx, id)

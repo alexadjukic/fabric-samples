@@ -23,6 +23,48 @@ function getAll() {
   peer chaincode query -C $CHANNEL_NAME -n $CC_NAME -c "{\"function\": \"GetAll${ASSET_NAME}\", \"Args\":[]}" | jq
 }
 
+# createMerchant ORG PEER (ORG PEER...)
+function createMerchant() {
+  parsePeerConnectionParameters $@
+
+  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c '{"function":"CreateMerchant","Args":["23", "789", 0, 1000]}'
+}
+
+function createMerchant() {
+  parsePeerConnectionParameters $@
+
+  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c '{"function":"AddProductToMerchant","Args":["21", "13"]}'
+}
+
+function createUsers() {
+  parsePeerConnectionParameters $@
+
+  JSON_PAYLOAD=$(cat <<EOF
+  [
+    {
+      "ID": "03",
+      "Name": "John",
+      "Surname": "Doe",
+      "Email": "john@example.com",
+      "Balance": 100,
+      "Bills": []
+    },
+    {
+      "ID": "04",
+      "Name": "Jane",
+      "Surname": "Smith",
+      "Email": "jane@example.com",
+      "Balance": 200,
+      "Bills": []
+    }
+  ]
+  EOF
+  )
+
+  set -x
+  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c "{\"function\":\"CreateUsers\",\"Args\":[\"$(jq -c ${JSON_PAYLOAD})\"]}"
+}
+
 
 FUNC=$1
 CHANNEL_NAME=${2:-"mychannel"}
@@ -32,10 +74,28 @@ if [ $FUNC == "InitLedger" ]; then
   infoln "Invoking InitLedger function"
   invokeInit 1 0 2 0 3 0
 elif [ $FUNC == "GetAllUsers" ]; then
+  infoln "Invoking GetAllUsers function"
   getAll 3 0 "Users"
 elif [ $FUNC == "GetAllProducts" ]; then
+  infoln "Invoking GetAllProducts function"
   getAll 3 0 "Products"
 elif [ $FUNC == "GetAllMerchants" ]; then
+  infoln "Invoking GetAllMerchants function"
   getAll 3 0 "Merchants"
+elif [ $FUNC == "CreateMerchant" ]; then
+  infoln "Invoking CreateMerchant function with parameters"
+  infoln "  id: 23"
+  infoln "  pib: 789"
+  infoln "  type: 0"
+  infoln "  balance: 1000"
+  createMerchant 1 0 2 0 3 0
+elif [ $FUNC == "AddProductToMerchant" ]; then
+  infoln "Invoking AddProductToMerchant function with parameters"
+  infoln "  merchantId: 21"
+  infoln "  productId: 13"
+  createMerchant 1 0 2 0 3 0
+elif [ $FUNC == "CreateUsers" ]; then
+  infoln "Invoking CreateUsers function with 2 users"
+  createUsers 1 0 2 0 3 0
 fi
 

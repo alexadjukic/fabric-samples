@@ -109,6 +109,41 @@ func TestAddProductToMerchant(t *testing.T) {
 	require.EqualError(t, err, "the product 11 does not exist")
 }
 
+func TestCreateUsers(t *testing.T) {
+	chaincodeStub := &mocks.ChaincodeStub{}
+	transactionContext := &mocks.TransactionContext{}
+	transactionContext.GetStubReturns(chaincodeStub)
+
+	assetTransfer := chaincode.SmartContract{}
+
+	users := []chaincode.User{
+		{
+			Balance: 1000,
+			Bills:   []string{},
+			Email:   "markomarkovic@email.com",
+			ID:      "01",
+			Name:    "Marko",
+			Surname: "Markovic",
+		},
+		{
+			Balance: 1000,
+			Bills:   []string{},
+			Email:   "petarpetrovic@email.com",
+			ID:      "02",
+			Name:    "Petar",
+			Surname: "Petrovic",
+		},
+	}
+
+	chaincodeStub.GetStateReturns(nil, nil)
+	err := assetTransfer.CreateUsers(transactionContext, users)
+	require.NoError(t, err)
+
+	chaincodeStub.GetStateReturns([]byte{}, nil)
+	err = assetTransfer.CreateUsers(transactionContext, users)
+	require.EqualError(t, err, "the user 01 already exists")
+}
+
 func TestCreateAsset(t *testing.T) {
 	chaincodeStub := &mocks.ChaincodeStub{}
 	transactionContext := &mocks.TransactionContext{}
