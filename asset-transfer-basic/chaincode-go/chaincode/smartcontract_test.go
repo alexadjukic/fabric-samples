@@ -48,15 +48,15 @@ func TestCreateMerchant(t *testing.T) {
 	transactionContext.GetStubReturns(chaincodeStub)
 
 	assetTransfer := chaincode.SmartContract{}
-	err := assetTransfer.CreateMerchant(transactionContext, "", "", 0, 1000)
+	err := assetTransfer.CreateMerchant(transactionContext, "", "", "Supermarket", 1000)
 	require.NoError(t, err)
 
 	chaincodeStub.GetStateReturns([]byte{}, nil)
-	err = assetTransfer.CreateMerchant(transactionContext, "21", "", 0, 1000)
+	err = assetTransfer.CreateMerchant(transactionContext, "21", "", "Supermarket", 1000)
 	require.EqualError(t, err, "the merchant 21 already exists")
 
 	chaincodeStub.GetStateReturns(nil, fmt.Errorf("unable to retrieve asset"))
-	err = assetTransfer.CreateMerchant(transactionContext, "21", "", 0, 1000)
+	err = assetTransfer.CreateMerchant(transactionContext, "21", "", "Supermarket", 1000)
 	require.EqualError(t, err, "failed to read from world state: unable to retrieve asset")
 }
 

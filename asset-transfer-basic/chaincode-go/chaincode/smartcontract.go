@@ -39,6 +39,18 @@ const (
 	Service
 )
 
+var merchantTypeToString = map[MerchantType]string{
+	Supermarket: "Supermarket",
+	Wholesale:   "Wholesale",
+	Service:     "Service",
+}
+
+var stringToMerchantType = map[string]MerchantType{
+	"Supermarket": Supermarket,
+	"Wholesale":   Wholesale,
+	"Service":     Service,
+}
+
 type Product struct {
 	Amount     int    `json:"Ammount"`
 	ExpiryDate string `json:"ExpiryDate"`
@@ -216,7 +228,7 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface, 
 	return nil
 }
 
-func (s *SmartContract) CreateMerchant(ctx contractapi.TransactionContextInterface, id string, pib string, mtype MerchantType, balance int) error {
+func (s *SmartContract) CreateMerchant(ctx contractapi.TransactionContextInterface, id string, pib string, mtype string, balance int) error {
 	exists, err := s.AssetExists(ctx, id)
 	if err != nil {
 		return err
@@ -228,7 +240,7 @@ func (s *SmartContract) CreateMerchant(ctx contractapi.TransactionContextInterfa
 	merchant := Merchant{
 		ID:       id,
 		Pib:      pib,
-		Type:     mtype,
+		Type:     stringToMerchantType[mtype],
 		Balance:  balance,
 		Products: []string{},
 		Bills:    []string{},
