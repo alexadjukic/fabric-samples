@@ -323,6 +323,15 @@ checkCommitReadiness 1 0 "\"Org1MSP\": true" "\"Org2MSP\": true" "\"Org3MSP\": f
 checkCommitReadiness 2 0 "\"Org1MSP\": true" "\"Org2MSP\": true" "\"Org3MSP\": false"
 checkCommitReadiness 3 0 "\"Org1MSP\": true" "\"Org2MSP\": true" "\"Org3MSP\": false"
 
+## now approve also for org3
+approveForMyOrg 3 0
+
+## check whether the chaincode definition is ready to be committed
+## expect them both to have approved
+checkCommitReadiness 1 0 "\"Org1MSP\": true" "\"Org2MSP\": true" "\"Org3MSP\": true"
+checkCommitReadiness 2 0 "\"Org1MSP\": true" "\"Org2MSP\": true" "\"Org3MSP\": true"
+checkCommitReadiness 3 0 "\"Org1MSP\": true" "\"Org2MSP\": true" "\"Org3MSP\": true"
+
 ## now that we know for sure both orgs have approved, commit the definition
 commitChaincodeDefinition 1 0 2 0
 
