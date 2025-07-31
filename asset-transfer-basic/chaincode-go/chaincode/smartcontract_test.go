@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+
 	// "github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-samples/asset-transfer-basic/chaincode-go/chaincode"
 	"github.com/hyperledger/fabric-samples/asset-transfer-basic/chaincode-go/chaincode/mocks"
@@ -142,6 +145,75 @@ func TestCreateUsers(t *testing.T) {
 	chaincodeStub.GetStateReturns([]byte{}, nil)
 	err = assetTransfer.CreateUsers(transactionContext, users)
 	require.EqualError(t, err, "the user 01 already exists")
+}
+
+func TestBuyProduct(t *testing.T) {
+	chaincodeStub := &mocks.ChaincodeStub{}
+	transactionContext := &mocks.TransactionContext{}
+	transactionContext.GetStubReturns(chaincodeStub)
+
+	assetTransfer := chaincode.SmartContract{}
+
+	user := chaincode.User{
+		Balance: 1000,
+		Bills:   []string{},
+		Email:   "markomarkovic@email.com",
+		ID:      "01",
+		Name:    "Marko",
+		Surname: "Markovic",
+	}
+
+	merchant := chaincode.Merchant{
+		ID:       "21",
+		Pib:      "1234",
+		Type:     chaincode.Wholesale,
+		Products: []string{"11"},
+		Bills:    []string{},
+		Balance:  1000,
+	}
+	product := chaincode.Product{
+		ID:         "11",
+		Name:       "Cheese",
+		ExpiryDate: time.Now().String(),
+		Price:      5,
+		Amount:     3,
+	}
+
+	userJSON, err := json.Marshal(user)
+	require.NoError(t, err)
+
+	productJSON, err := json.Marshal(product)
+	require.NoError(t, err)
+
+	merchantJSON, err := json.Marshal(merchant)
+	require.NoError(t, err)
+
+	merchantIter := mocks.StateQueryIterator{}
+	merchantIter.HasNextReturns(true)
+	merchantIter.NextReturns(&queryresult.KV{Value: merchantJSON}, nil)
+
+	chaincodeStub.GetStateReturnsOnCall(0, userJSON, nil)
+	chaincodeStub.GetStateReturnsOnCall(1, productJSON, nil)
+	chaincodeStub.GetQueryResultReturns(&merchantIter, nil)
+	err = assetTransfer.BuyProduct(transactionContext, user.ID, product.ID, "Mon Jan  2 15:04:05 MST 2006")
+	require.NoError(t, err)
+
+	brokeUser := chaincode.User{
+		Balance: 4,
+		Bills:   []string{},
+		Email:   "markomarkovic@email.com",
+		ID:      "01",
+		Name:    "Marko",
+		Surname: "Markovic",
+	}
+
+	brokeUserJSON, err := json.Marshal(brokeUser)
+	require.NoError(t, err)
+
+	chaincodeStub.GetStateReturnsOnCall(2, brokeUserJSON, nil)
+	chaincodeStub.GetStateReturnsOnCall(3, productJSON, nil)
+	err = assetTransfer.BuyProduct(transactionContext, brokeUser.ID, product.ID, "Mon Jan  2 15:04:05 MST 2006")
+	require.EqualError(t, err, "user does not have enough assets to buy the product")
 }
 
 func TestCreateAsset(t *testing.T) {

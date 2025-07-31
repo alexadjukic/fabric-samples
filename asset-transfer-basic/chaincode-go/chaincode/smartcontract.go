@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 )
 
 // SmartContract provides functions for managing an Asset
@@ -313,6 +314,123 @@ func (s *SmartContract) CreateUsers(ctx contractapi.TransactionContextInterface,
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *SmartContract) BuyProduct(ctx contractapi.TransactionContextInterface, userId string, productId string, date string) error {
+	userJSON, err := ctx.GetStub().GetState(userId)
+	if err != nil {
+		return fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	if userJSON == nil {
+		return fmt.Errorf("the user %s does not exist", userId)
+	}
+
+	productJSON, err := ctx.GetStub().GetState(productId)
+	if err != nil {
+		return fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	if productJSON == nil {
+		return fmt.Errorf("the product %s does not exist", productId)
+	}
+
+	queryString := fmt.Sprintf(`{
+		"selector": {
+			"Products": {
+				"$in": ["%s"]
+			}
+		}
+	}`, productId)
+
+	merchantIter, err := ctx.GetStub().GetQueryResult(queryString)
+	if err != nil {
+		return fmt.Errorf("failed to read from world state: %v", err)
+	}
+	defer merchantIter.Close()
+
+	var merchantJSON *queryresult.KV
+	if merchantIter.HasNext() {
+		merchantJSON, err = merchantIter.Next()
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("the merchant with product %s does not exist", productId)
+	}
+
+	var user User
+	err = json.Unmarshal(userJSON, &user)
+	if err != nil {
+		return err
+	}
+
+	var product Product
+	err = json.Unmarshal(productJSON, &product)
+	if err != nil {
+		return err
+	}
+
+	var merchant Merchant
+	err = json.Unmarshal(merchantJSON.Value, &merchant)
+	if err != nil {
+		return err
+	}
+
+	if user.Balance < product.Price {
+		return fmt.Errorf("user does not have enough assets to buy the product")
+	}
+
+	user.Balance -= product.Price
+	merchant.Balance += product.Price
+	product.Amount -= 1
+
+	currentTime, err := time.Parse(time.UnixDate, date)
+	if err != nil {
+		return err
+	}
+
+	bill := Bill{
+		Date:     currentTime.String(),
+		ID:       fmt.Sprintf("%s%s%d", userId, productId, currentTime.Unix()),
+		Merchant: merchant.ID,
+		Product:  productId,
+		User:     userId,
+	}
+
+	user.Bills = append(user.Bills, bill.ID)
+	merchant.Bills = append(merchant.Bills, bill.ID)
+
+	if product.Amount == 0 {
+		ctx.GetStub().DelState(productId)
+	} else {
+		productJSON, err = json.Marshal(product)
+		if err != nil {
+			return err
+		}
+
+		ctx.GetStub().PutState(productId, productJSON)
+	}
+
+	userJSON, err = json.Marshal(user)
+	if err != nil {
+		return err
+	}
+	ctx.GetStub().PutState(userId, userJSON)
+
+	merchantJSON.Value, err = json.Marshal(merchant)
+	if err != nil {
+		return err
+	}
+	ctx.GetStub().PutState(merchant.ID, merchantJSON.Value)
+
+	billJSON, err := json.Marshal(bill)
+	if err != nil {
+		return err
+	}
+	ctx.GetStub().PutState(bill.ID, billJSON)
+
 	return nil
 }
 

@@ -36,6 +36,7 @@ function addProductToMerchant() {
   peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c '{"function":"AddProductToMerchant","Args":["21", "13"]}'
 }
 
+# createUsers ORG PEER (ORG PEER...)
 function createUsers() {
   parsePeerConnectionParameters $@
 
@@ -61,8 +62,14 @@ function createUsers() {
 EOF
   )
 
-  set -x
   peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c "$(jq -nc --argjson users "$JSON_PAYLOAD" '{"function": "CreateUsers", "Args": [($users | tostring)]}')"
+}
+
+# buyProduct ORG PEER (ORG PEER...)
+function buyProduct() {
+  parsePeerConnectionParameters $@
+
+  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c "{\"function\": \"BuyProduct\", \"Args\": [\"01\", \"11\", \"$(date +%a\ %b\ %e\ %T\ %Z\ %Y)\"]}"
 }
 
 
@@ -97,5 +104,10 @@ elif [ $FUNC == "AddProductToMerchant" ]; then
 elif [ $FUNC == "CreateUsers" ]; then
   infoln "Invoking CreateUsers function with 2 users"
   createUsers 1 0 2 0 3 0
+elif [ $FUNC == "BuyProduct" ]; then
+  infoln "Invoking BuyProduct function with arguments"
+  infoln "  userId: 01"
+  infoln "  productId: 11"
+  buyProduct 1 0 2 0 3 0
 fi
 
