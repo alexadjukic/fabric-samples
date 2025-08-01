@@ -72,6 +72,25 @@ function buyProduct() {
   peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c "{\"function\": \"BuyProduct\", \"Args\": [\"01\", \"11\", \"$(date +%a\ %b\ %e\ %T\ %Z\ %Y)\"]}"
 }
 
+# addFunds ORG PEER (ORG PEER...)
+function addFunds() {
+  parsePeerConnectionParameters $@
+
+  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile $ORDERER_CA -C $CHANNEL_NAME -n $CC_NAME $PEER_CONN_PARMS -c '{"function": "AddFunds", "Args": ["01", "5"]}'
+}
+
+# findProduct ORG PEER ID NAME MERCHANT_TYPE PRICE
+function findProduct() {
+  ORG=$1
+  PEER=$2
+  ID=$3
+  NAME=$4
+  MERCHANT_TYPE=$5
+  PRICE=$6
+  setGlobals $ORG $PEER
+  peer chaincode query -C $CHANNEL_NAME -n $CC_NAME -c "{\"function\": \"FindProduct\", \"Args\":[\"${ID}\", \"${NAME}\", \"${MERCHANT_TYPE}\", \"${PRICE}\"]}" | jq
+}
+
 
 FUNC=$1
 CHANNEL_NAME=${2:-"mychannel"}
@@ -109,5 +128,17 @@ elif [ $FUNC == "BuyProduct" ]; then
   infoln "  userId: 01"
   infoln "  productId: 11"
   buyProduct 1 0 2 0 3 0
+elif [ $FUNC == "AddFunds" ]; then
+  infoln "Invoking AddFunds function with parameters"
+  infoln "  id: 01"
+  infoln "  amount: 5"
+  addFunds 1 0 2 0 3 0
+elif [ $FUNC == "FindProduct" ]; then
+  infoln "Invoking FindProduct function with parameters"
+  infoln "  id: 11"
+  infoln "  name: Cheese"
+  infoln "  mtype: Wholesale"
+  infoln "  price: 5"
+  findProduct 3 0 "11" "Cheese" "Wholesale" "5"
 fi
 

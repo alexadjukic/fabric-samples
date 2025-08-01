@@ -434,6 +434,139 @@ func (s *SmartContract) BuyProduct(ctx contractapi.TransactionContextInterface, 
 	return nil
 }
 
+func (s *SmartContract) AddFunds(ctx contractapi.TransactionContextInterface, id string, amount int) error {
+	entityJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	if entityJSON == nil {
+		return fmt.Errorf("no entity with id %s exists on the legder", id)
+	}
+
+	var user User
+	var merchant Merchant
+	err = json.Unmarshal(entityJSON, &user)
+	if err != nil {
+		err = json.Unmarshal(entityJSON, &merchant)
+		if err != nil {
+			return fmt.Errorf("entity with id %s is neither merchant nor user", id)
+		}
+
+		merchant.Balance += amount
+
+		merchantJSON, err := json.Marshal(merchant)
+		if err != nil {
+			return err
+		}
+
+		return ctx.GetStub().PutState(id, merchantJSON)
+	}
+
+	user.Balance += amount
+
+	userJSON, err := json.Marshal(user)
+
+	return ctx.GetStub().PutState(id, userJSON)
+}
+
+func (s *SmartContract) FindProduct(ctx contractapi.TransactionContextInterface, id, name, mtype string, price int) ([]*Product, error) {
+	selector := map[string]interface{}{}
+
+	if id != "" {
+		selector["ID"] = id
+	}
+
+	if name != "" {
+		selector["Name"] = name
+	}
+
+	if price != -1 {
+		selector["Price"] = price
+	}
+
+	query := map[string]interface{}{
+		"selector": selector,
+	}
+
+	queryBytes, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %v", err)
+	}
+
+	resultsIterator, err := ctx.GetStub().GetQueryResult(string(queryBytes))
+	if err != nil {
+		return nil, fmt.Errorf("query failed %v", err)
+	}
+	defer resultsIterator.Close()
+
+	var products []*Product
+	for resultsIterator.HasNext() {
+		queryRespone, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var product Product
+		if err := json.Unmarshal(queryRespone.Value, &product); err != nil {
+			return nil, err
+		}
+
+		if mtype != "" {
+			merchant, err := s.FindMerchantByProductIdAndMerchantType(ctx, product.ID, mtype)
+			if err != nil {
+				continue
+			}
+
+			if merchant == nil {
+				continue
+			}
+
+		}
+
+		products = append(products, &product)
+
+	}
+
+	return products, nil
+}
+
+func (s *SmartContract) FindMerchantByProductIdAndMerchantType(ctx contractapi.TransactionContextInterface, productId string, mtype string) (*Merchant, error) {
+	query := map[string]interface{}{
+		"selector": map[string]interface{}{
+			"Products": map[string]interface{}{
+				"$in": []string{productId},
+			},
+			"Type": stringToMerchantType[mtype],
+		},
+	}
+
+	queryBytes, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
+
+	resultsIterator, err := ctx.GetStub().GetQueryResult(string(queryBytes))
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var merchant Merchant
+		err = json.Unmarshal(queryResponse.Value, &merchant)
+
+		return &merchant, nil
+	}
+
+	return nil, nil
+}
+
 // CreateAsset issues a new asset to the world state with given details.
 func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, size int, owner string, appraisedValue int) error {
 	exists, err := s.AssetExists(ctx, id)

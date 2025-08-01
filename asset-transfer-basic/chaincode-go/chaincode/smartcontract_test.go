@@ -216,6 +216,131 @@ func TestBuyProduct(t *testing.T) {
 	require.EqualError(t, err, "user does not have enough assets to buy the product")
 }
 
+func TestAddFunds(t *testing.T) {
+	chaincodeStub := &mocks.ChaincodeStub{}
+	transactionContext := &mocks.TransactionContext{}
+	transactionContext.GetStubReturns(chaincodeStub)
+
+	assetTransfer := chaincode.SmartContract{}
+
+	user := chaincode.User{
+		Balance: 1000,
+		Bills:   []string{},
+		Email:   "markomarkovic@email.com",
+		ID:      "01",
+		Name:    "Marko",
+		Surname: "Markovic",
+	}
+
+	userJSON, err := json.Marshal(user)
+	require.NoError(t, err)
+
+	chaincodeStub.GetStateReturnsOnCall(0, userJSON, nil)
+	err = assetTransfer.AddFunds(transactionContext, user.ID, 5)
+	require.NoError(t, err)
+
+	merchant := chaincode.Merchant{
+		ID:       "21",
+		Pib:      "1234",
+		Type:     chaincode.Wholesale,
+		Products: []string{"11"},
+		Bills:    []string{},
+		Balance:  1000,
+	}
+
+	merchantJSON, err := json.Marshal(merchant)
+	require.NoError(t, err)
+
+	chaincodeStub.GetStateReturnsOnCall(1, merchantJSON, nil)
+	err = assetTransfer.AddFunds(transactionContext, merchant.ID, 5)
+	require.NoError(t, err)
+
+	chaincodeStub.GetStateReturnsOnCall(2, nil, nil)
+	err = assetTransfer.AddFunds(transactionContext, "1", 5)
+	require.EqualError(t, err, "no entity with id 1 exists on the legder")
+
+	chaincodeStub.GetStateReturnsOnCall(3, []byte{}, nil)
+	err = assetTransfer.AddFunds(transactionContext, "1", 5)
+	require.EqualError(t, err, "entity with id 1 is neither merchant nor user")
+}
+
+func TestFindProduct(t *testing.T) {
+	chaincodeStub := &mocks.ChaincodeStub{}
+	transactionContext := &mocks.TransactionContext{}
+	transactionContext.GetStubReturns(chaincodeStub)
+
+	assetTransfer := chaincode.SmartContract{}
+
+	product := chaincode.Product{
+		ID:         "11",
+		Name:       "Cheese",
+		ExpiryDate: time.Now().String(),
+		Price:      5,
+		Amount:     3,
+	}
+
+	productJSON, err := json.Marshal(product)
+	require.NoError(t, err)
+
+	productIterator := mocks.StateQueryIterator{}
+	productIterator.HasNextReturnsOnCall(0, true)
+	productIterator.HasNextReturnsOnCall(1, false)
+	productIterator.NextReturns(&queryresult.KV{Value: productJSON}, nil)
+
+	merchant := chaincode.Merchant{
+		ID:       "21",
+		Pib:      "1234",
+		Type:     chaincode.Wholesale,
+		Products: []string{"11", "12"},
+		Bills:    []string{},
+		Balance:  1000,
+	}
+
+	merchantJSON, err := json.Marshal(merchant)
+	require.NoError(t, err)
+
+	merchantIterator := mocks.StateQueryIterator{}
+	merchantIterator.HasNextReturnsOnCall(0, true)
+	merchantIterator.HasNextReturnsOnCall(1, false)
+	merchantIterator.NextReturns(&queryresult.KV{Value: merchantJSON}, nil)
+
+	chaincodeStub.GetQueryResultReturnsOnCall(0, &productIterator, nil)
+	chaincodeStub.GetQueryResultReturnsOnCall(1, &merchantIterator, nil)
+	products, err := assetTransfer.FindProduct(transactionContext, "11", "Cheese", "Wholesale", 5)
+	require.Equal(t, []*chaincode.Product{&product}, products)
+	require.NoError(t, err)
+
+	productIterator1 := mocks.StateQueryIterator{}
+	productIterator1.HasNextReturnsOnCall(0, true)
+	productIterator1.HasNextReturnsOnCall(1, false)
+	productIterator1.NextReturns(&queryresult.KV{Value: productJSON}, nil)
+
+	merchantIterator1 := mocks.StateQueryIterator{}
+	merchantIterator1.HasNextReturns(false)
+
+	chaincodeStub.GetQueryResultReturnsOnCall(2, &productIterator1, nil)
+	chaincodeStub.GetQueryResultReturnsOnCall(3, &merchantIterator1, nil)
+	products, err = assetTransfer.FindProduct(transactionContext, "11", "Cheese", "Wholesale", 5)
+	require.Equal(t, []*chaincode.Product(nil), products)
+	require.NoError(t, err)
+
+	productIterator2 := mocks.StateQueryIterator{}
+	productIterator2.HasNextReturnsOnCall(0, true)
+	productIterator2.HasNextReturnsOnCall(1, false)
+	productIterator2.NextReturns(&queryresult.KV{Value: productJSON}, nil)
+
+	merchantIterator2 := mocks.StateQueryIterator{}
+	merchantIterator2.HasNextReturnsOnCall(0, true)
+	merchantIterator2.HasNextReturnsOnCall(1, false)
+	merchantIterator2.NextReturns(&queryresult.KV{Value: merchantJSON}, nil)
+
+	chaincodeStub.GetQueryResultReturnsOnCall(4, &productIterator2, nil)
+	chaincodeStub.GetQueryResultReturnsOnCall(5, &merchantIterator2, nil)
+	products, err = assetTransfer.FindProduct(transactionContext, "", "Cheese", "Wholesale", 5)
+	require.Equal(t, []*chaincode.Product{&product}, products)
+	require.NoError(t, err)
+}
+
 func TestCreateAsset(t *testing.T) {
 	chaincodeStub := &mocks.ChaincodeStub{}
 	transactionContext := &mocks.TransactionContext{}

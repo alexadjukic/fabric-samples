@@ -1,6 +1,6 @@
 {
   "index": {
-    "fields": ["Products"]
+    "fields": ["Products", "Type"]
   },
   "name": "products-index",
   "type": "json"
